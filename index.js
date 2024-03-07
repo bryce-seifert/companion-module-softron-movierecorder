@@ -1,4 +1,4 @@
-import { InstanceBase, Regex, runEntrypoint } from '@companion-module/base'
+import { InstanceBase, InstanceStatus, Regex, runEntrypoint } from '@companion-module/base'
 import { getActions } from './actions.js'
 import { getPresets } from './presets.js'
 import { getVariables, updateSourceVariables } from './variables.js'
@@ -24,7 +24,7 @@ class MovieRecorderInstance extends InstanceBase {
 		this.destinationList = []
 		this.errorCount = 0
 
-		this.updateStatus('connecting')
+		this.updateStatus(InstanceStatus.Connecting)
 		this.errorCount = 0
 		this.timeOut = 0
 		this.pollingInterval = 5000
@@ -91,7 +91,7 @@ class MovieRecorderInstance extends InstanceBase {
 		this.config = config
 
 		if (resetConnection === true) {
-			this.updateStatus('connecting')
+			this.updateStatus(InstanceStatus.Connecting)
 			this.init()
 		}
 	}
@@ -174,7 +174,7 @@ class MovieRecorderInstance extends InstanceBase {
 				let errorText = String(err)
 				if (errorText.match('ECONNREFUSED')) {
 					if (this.errorCount < 1) {
-						this.updateStatus('connection_failure')
+						this.updateStatus(InstanceStatus.ConnectionFailure)
 						this.log('error', 'Unable to connect to MovieRecorder')
 					}
 					if (this.errorCount > 60 && this.pollingInterval == 1000) {
@@ -184,7 +184,7 @@ class MovieRecorderInstance extends InstanceBase {
 					this.errorCount++
 				} else if (errorText.match('ETIMEDOUT') || errorText.match('ENOTFOUND')) {
 					if (this.timeOut < 1) {
-						this.updateStatus('connection_failure')
+						this.updateStatus(InstanceStatus.ConnectionFailure)
 						this.log('error', 'Unable to connect to MovieRecorder')
 						this.timeOut++
 					}
@@ -201,23 +201,23 @@ class MovieRecorderInstance extends InstanceBase {
 						this.awaitingConnection = false
 						this.pollingInterval = 1000
 						this.setupPolling()
-						this.updateStatus('ok')
+						this.updateStatus(InstanceStatus.Ok)
 						this.log('info', 'Connected to MovieRecorder')
 					}
 					break
 				case 201: // Created
-					this.updateStatus('ok')
+					this.updateStatus(InstanceStatus.Ok)
 					this.log('debug', result.statusText)
 					break
 				case 202: // Accepted
-					this.updateStatus('ok')
+					this.updateStatus(InstanceStatus.Ok)
 					this.log('debug', result.statusText)
 					break
 				case 400: // Bad Request
 					this.log('warn', result.statusText)
 					break
 				case 401: // Authentication Failed
-					this.updateStatus('bad_config')
+					this.updateStatus(InstanceStatus.BadConfig)
 					if (this.errorCount == 0) {
 						this.log('error', 'Authentication failed. Please check your password settings')
 					}
@@ -231,7 +231,7 @@ class MovieRecorderInstance extends InstanceBase {
 					break
 				default:
 					// Unexpected response
-					this.updateStatus('unknown_error')
+					this.updateStatus(InstanceStatus.UnknownError)
 					this.log('error', result.statusText)
 					break
 			}
